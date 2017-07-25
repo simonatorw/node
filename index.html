@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<title>Tweet</title>
+		<style>
+			#tweets {
+				margin-top: 10px;
+				height: 220px;
+				width: 260px;
+				overflow: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<section id="tweetForm">
+			<form>
+				<label id="time"></label>
+				<input type="text" name="tweet">
+				<button id="send">Send</button>
+				<button id="clear">Clear</button>
+			</form>
+		</section>
+		<section id="tweets">
+		</section>
+		<script src="/js/Net.js"></script>
+		<script>
+			const net = new Net();
+			const ws = new WebSocket('ws://127.0.0.1:8000');
+			
+			document.getElementById('send').addEventListener('click', function(e) {
+				e.preventDefault();
+				
+				const val = document.forms[0].tweet.value;
+				
+				if (val) {
+					const data = `tweet=${val}`;
+
+					document.forms[0].tweet.value = '';
+					net.ajax('POST', 'send', data).then(function(e) {
+						console.log(e.target.response);
+					});
+					
+					net.ajax('GET', 'tweets').then(function(e) {
+						const data = JSON.parse(e.target.response);
+						if (data.length) {
+							
+							const node = document.createElement('DIV');
+							const textNode = document.createTextNode(data[data.length - 1]);
+							node.appendChild(textNode);
+							document.getElementById('tweets').appendChild(node);
+							
+							document.querySelector('#tweets div:last-child').scrollIntoView(false);
+						}
+					});
+				}
+				document.forms[0].tweet.focus();
+				ws.send('hello simon');
+			});
+			
+			document.getElementById('clear').addEventListener('click', function(e) {
+				e.preventDefault();
+				
+				net.ajax('POST', 'clear', '').then(function(e) {
+				});
+				
+				net.ajax('GET', 'tweets').then(function(e) {
+					const data = JSON.parse(e.target.response);
+					
+					if (!data.length) {
+						document.getElementById('tweets').innerHTML = '';
+					}
+				});
+
+			});
+			
+			net.ajax('GET', 'tweets').then(function(e) {
+				const data = JSON.parse(e.target.response);
+				if (data.length) {
+					let str = '';
+					
+					for (let i = 0; i < data.length; i++) {
+						str = str + '<div>' + data[i] + '</div>';
+					}
+					
+					document.getElementById('tweets').innerHTML = str;
+				}
+			});
+			
+			ws.onmessage = function(msg) {
+				let obj = JSON.parse(msg.data);
+				let h = obj.hrs;
+				let m = parseInt(obj.mins, 10) < 10 ? '0' + obj.mins : obj.mins;
+				let s = parseInt(obj.secs, 10) < 10 ? '0' + obj.secs : obj.secs;
+				
+				document.getElementById('time').innerHTML = h + ':' + m + ':' + s;
+			};
+			document.forms[0].tweet.focus();
+			
+		</script>
+	</body>
+</html>
